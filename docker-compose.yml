@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  blindtestpostgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: strongPassword
+      POSTGRES_USER: admin_user
+      POSTGRES_DB: blindtestdb
+    ports:
+      - "5432:5432"
+    command: [ "postgres", "-c", "listen_addresses=*", "-c", "port=5432" ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d blindtestdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+  autoblindtest:
+    image: auto-blindtest
+    depends_on:
+      blindtestpostgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://blindtestpostgres:5432/blindtestdb
+      SPRING_DATASOURCE_USERNAME: admin_user
+      SPRING_DATASOURCE_PASSWORD: strongPassword
+      SERVER_PORT: 8080
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
